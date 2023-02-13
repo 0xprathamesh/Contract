@@ -1,21 +1,65 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-contract Course {
+pragma solidity ^0.8.7;
+
+
+contract CodeCamp {
+   
     enum Role { Teacher, Student }
 
     mapping (address => Role) public roles;
 
-    struct CourseData {
-        uint price;
-        bytes32 nameHash;
-        address payable owner;
-    }
+      string public name = "Codecamp";
+      uint256 public videoCount = 0;
 
-    mapping (address => CourseData) public courses;
+  
+     struct Course{
+        uint256 id;
+        string hash;
+        string title;
+        string description;
+        string location;
+        string category;
+        string thumbnailHash;
+        string date;
+        string teacherName;
+        uint256 courseCost;
+        address payable author;
+         }      
+   
+     mapping(uint256 => Course) public courses;
+     
+      
+       event UploadCourse (
+        uint256 id,
+        string hash,
+        string title,
+        string description,
+        string location,
+        string category,
+        string thumbnailHash, 
+        string date,
+        string teacherName,
+        uint256 courseCost,
+        address payable author
+        );
 
-    event CourseAdded(address payable owner, bytes32 nameHash, uint price);
-    event CoursePurchased(address payable  owner, bytes32 nameHash, uint price, address buyer);
+        event PurchaseCourse(
+           uint256 id,
+           string hash,
+           string title,
+           string description,
+           string location,
+           string category,
+           string thumbnailHash,
+           string date,
+           string teacherName,
+           uint256 courseCost,
+           address payable author
+          );
 
+   
+
+    //Roles
     function addAsTeacher() public {
         require(roles[msg.sender] == Role.Teacher || roles[msg.sender] == Role.Student, "Already assigned a role");
         roles[msg.sender] = Role.Teacher;
@@ -25,21 +69,100 @@ contract Course {
         require(roles[msg.sender] == Role.Teacher || roles[msg.sender] == Role.Student, "Already assigned a role");
         roles[msg.sender] = Role.Student;
     }
-
-    function addCourse(string memory courseName, uint price) public {
+    function addCourse(
+        string memory _videoHash,
+        string memory _title,
+        string memory _description,
+        string memory _location,
+        string memory _category,
+        string memory _thumbnailHash,
+        string memory _date,
+        string memory _teacherName,
+        uint256 _courseCost
+    ) public {
         require(roles[msg.sender] == Role.Teacher, "Only teachers can add courses");
-        courses[msg.sender] = CourseData(price, keccak256(abi.encodePacked(courseName)), payable(msg.sender));
-        emit CourseAdded(payable(msg.sender), keccak256(abi.encodePacked(courseName)), price);
+        
+        require(bytes(_videoHash).length > 0);
+        require(bytes(_title).length > 0);
+        require(msg.sender != address(0));
+        videoCount++;
+        courses[videoCount] = Course(
+            videoCount,
+            _videoHash,
+            _title,
+            _description,
+            _location,
+            _category,
+            _thumbnailHash,
+            _date,
+            _teacherName,
+            _courseCost,
+            payable(msg.sender)
+        );
+        emit UploadCourse(
+            videoCount,
+            _videoHash,
+            _title,
+            _description,
+            _location,
+            _category,
+            _thumbnailHash,
+            _date,
+            _teacherName,
+            _courseCost,
+            payable(msg.sender)
+        );
+    }
+    
+    function getCourseDetails(uint256 _courseId) public view returns (string memory, string memory, string memory, string memory, string memory, string memory, string memory, string memory, uint256) {
+    Course storage courseData = courses[_courseId];
+    require(courseData.id == _courseId, "Course not found");
+    return (
+        courseData.hash,
+        courseData.title,
+        courseData.description,
+        courseData.location,
+        courseData.category,
+        courseData.thumbnailHash,
+        courseData.date,
+        courseData.teacherName,
+        courseData.courseCost
+    );
+}
+
+    
+    function purchaseCourse(uint256 _courseId) public payable {
+     require(roles[msg.sender] == Role.Student, "Only students can purchase courses");
+        Course storage courseData = courses[_courseId];
+        require(courseData.id == _courseId, "Course not found");
+        require(courseData.courseCost <= msg.value, "Insufficient funds");
+        require(courseData.author != msg.sender, "You cannot purchase your own course");
+
+        courseData.author.transfer(msg.value);
+        emit PurchaseCourse(
+             courseData.id,
+             courseData.hash,
+             courseData.title,
+             courseData.description,
+             courseData.location,
+             courseData.category,
+             courseData.thumbnailHash,
+             courseData.date,
+             courseData.teacherName,
+             courseData.courseCost,
+             courseData.author
+        );
+    }
+    struct User {
+        string name;
+        string handle;
+        string bio;
+        address walletAddress;
     }
 
-    function purchaseCourse(address owner, string memory courseName) public payable {
-        require(roles[msg.sender] == Role.Student, "Only students can purchase courses");
-        CourseData storage courseData = courses[owner];
-        require(courseData.nameHash == keccak256(abi.encodePacked(courseName)), "Course not found");
-        require(courseData.price <= msg.value, "Insufficient funds");
-        require(courseData.owner != msg.sender, "You cannot purchase your own course");
+    mapping (address => User) public users;
 
-        courseData.owner.transfer(msg.value);
-        emit CoursePurchased(payable(owner), courseData.nameHash, courseData.price, msg.sender);
+    function addProfile(string memory _name, string memory _handle, string memory _bio, address _walletAddress) public {
+        users[msg.sender] = User(_name, _handle, _bio, _walletAddress);
     }
 }
